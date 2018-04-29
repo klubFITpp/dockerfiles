@@ -32,6 +32,9 @@ function build-tag-push-single {
         if [ "${CIRCLE_BRANCH}" == "master" ]; then 
             docker tag "${IMAGE_NAME}":"${CIRCLE_SHA1}" "${IMAGE_NAME}":latest 
             docker push "${IMAGE_NAME}":latest 
+            
+            docker tag "${IMAGE_NAME}":"${CIRCLE_SHA1}" "${IMAGE_NAME}":master
+            docker push "${IMAGE_NAME}":master
         fi
         set -u
 }
