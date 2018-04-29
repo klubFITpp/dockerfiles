@@ -9,7 +9,7 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
-      
+
       - run:
           name: Docker login
           command: docker login -u "${DOCKER_LOGIN}" -p "${DOCKER_PASS}"
@@ -46,4 +46,18 @@ jobs:
       - store_artifacts:
           path: /out
 
+  lint:
+    docker:
+      - image: hadolint/hadolint
+    steps:
+      - checkout
+      - run:
+          name: Hadolint
+          command: find . -name Dockerfile -type f -print0 | xargs -0 -n1 hadolint
 
+workflows:
+  version: 2
+  commit:
+    jobs:
+      - build
+      - lint
