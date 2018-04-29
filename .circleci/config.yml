@@ -1,0 +1,49 @@
+version: 2
+jobs:
+  build: 
+    docker:
+      - image: klubfitpp/dockerfiles-builder:latest
+    working_directory: /klubfitpp/dockerfiles
+    environment:
+      TERM: "xterm"
+    steps:
+      - checkout
+      - setup_remote_docker
+      
+      - run:
+          name: Docker login
+          command: docker login -u "${DOCKER_LOGIN}" -p "${DOCKER_PASS}"
+
+      - restore_cache:
+          keys:
+            - v1-{{ .Branch }}
+            - v1-master
+            - v1-
+          paths:
+            - /caches/images.tar
+
+      - run:
+          name: Load Docker image layer cache
+          command: |
+            set +o pipefail
+            docker load -i /caches/images.tar | true
+
+      - run: 
+          name: Build, tag and push
+          command: .circleci/build-tag-push.sh
+
+      - run:
+          name: Save Docker image layer cache
+          command: |
+            mkdir -p /caches
+            docker save $(docker images -q) -o /caches/images.tar
+
+      - save_cache:  
+          key: v1-{{ .Branch }}-{{ epoch }}
+          paths:
+            - /caches/images.tar
+
+      - store_artifacts:
+          path: /out
+
+
