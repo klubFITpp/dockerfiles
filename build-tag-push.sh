@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-export PROJECT_ROOT="$(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ))"
-export PROJECT_USERNAME_LOWER="$(echo ${CIRCLE_PROJECT_USERNAME} | tr '[:upper:]' '[:lower:]')"
+export PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export PROJECT_USERNAME_LOWER="$(echo ${CI_PROJECT_NAMESPACE} | tr '[:upper:]' '[:lower:]')"
 
 
 function build-tag-push-single {
@@ -13,40 +13,37 @@ function build-tag-push-single {
 
         IMAGE_NAME="${PROJECT_USERNAME_LOWER}"/"${FOLDER_LOWER}"
         
-        docker build . -t "${IMAGE_NAME}":"${CIRCLE_SHA1}"
+        docker build . -t "${IMAGE_NAME}":"${CI_COMMIT_SHA}"
 
-        docker push "${IMAGE_NAME}":"${CIRCLE_SHA1}"
+        docker push "${IMAGE_NAME}":"${CI_COMMIT_SHA}"
 
         set +u
 
         if [ ! -z "$CIRCLE_PR_NUMBER" ]; then
-            docker tag "${IMAGE_NAME}":"${CIRCLE_SHA1}" "${IMAGE_NAME}":PR-"${CIRCLE_PR_NUMBER}"
+            docker tag "${IMAGE_NAME}":"${CI_COMMIT_SHA}" "${IMAGE_NAME}":PR-"${CIRCLE_PR_NUMBER}"
             docker push  "${IMAGE_NAME}":PR-"${CIRCLE_PR_NUMBER}"
         fi
 
-        if [ ! -z "$CIRCLE_TAG" ]; then
-            docker tag "${IMAGE_NAME}":"${CIRCLE_SHA1}" "${IMAGE_NAME}":"${CIRCLE_TAG}"
-            docker push "${IMAGE_NAME}":"${CIRCLE_TAG}"
+        if [ ! -z "$CI_COMMIT_REF_SLUG" ]; then
+            docker tag "${IMAGE_NAME}":"${CI_COMMIT_SHA}" "${IMAGE_NAME}":"${CI_COMMIT_REF_SLUG}"
+            docker push "${IMAGE_NAME}":"${CI_COMMIT_REF_SLUG}"
         fi
     
-        if [ "${CIRCLE_BRANCH}" == "master" ]; then 
-            docker tag "${IMAGE_NAME}":"${CIRCLE_SHA1}" "${IMAGE_NAME}":latest 
+        if [ "${CI_COMMIT_REF_SLUG}" == "master" ]; then 
+            docker tag "${IMAGE_NAME}":"${CI_COMMIT_SHA}" "${IMAGE_NAME}":latest 
             docker push "${IMAGE_NAME}":latest 
-            
-            docker tag "${IMAGE_NAME}":"${CIRCLE_SHA1}" "${IMAGE_NAME}":master
-            docker push "${IMAGE_NAME}":master
         fi
         set -u
 }
 
-mkdir -p /out
+mkdir -p ${PROJECT_ROOT}/.out
 
 declare -A build_pids
 
 for D in *; do
     cd "${PROJECT_ROOT}"
     if [ -d "${D}" ]; then
-        build-tag-push-single "${D}" &> "/out/${D}" &
+        build-tag-push-single "${D}" &> "${PROJECT_ROOT}/.out/${D}.txt" &
         build_pids["${D}"]=$!
     fi
 done

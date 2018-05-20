@@ -1,0 +1,46 @@
+
+
+variables:
+  DOCKER_DRIVER: overlay2
+
+services:
+- docker:dind
+
+stages:
+  - lint
+  - build
+
+
+build:    
+  image: klubfitpp/dockerfiles-builder:latest
+  stage: build
+  cache:
+    key: ${CI_JOB_NAME}
+    paths:
+      - /caches/images.tar
+
+  variables:
+      TERM: "xterm"
+
+
+  before_script:
+    - docker load -i /caches/images.tar || true
+    - docker login -u "${DOCKER_HUB_LOGIN}" -p "${DOCKER_HUB_PASS}"
+  script:
+    - $(pwd)/build-tag-push.sh
+
+  after_script:
+    - mkdir -p /caches/
+    - docker save $(docker images -q) -o /caches/images.tar
+
+  artifacts:    
+    when: on_failure
+    paths:
+      - .out/
+
+
+lint:
+  stage: lint
+  image: hadolint/hadolint
+  script:
+    - find . -name Dockerfile -type f -print0 | xargs -0 -n1 hadolint
